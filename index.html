@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -7,10 +8,14 @@
     <link rel="stylesheet" href="css/style.css">
     <title>minesweeper</title>
 </head>
-<body onload="initGame()">
+<body onload="initGame()" oncontextmenu="return false;">
     
-
-
+    <div class = "buttons">
+        <button onclick="setLevel('Beginner')">Beginner</button>
+        <button onclick="setLevel('Medium')">Medium</button>
+        <button onclick="setLevel('Expert')">Expert</button>
+    </div>
+    <div class="board-container"></div>
 
     <script src="js/utils.js"></script>
     <script src="js/main.js"></script>
