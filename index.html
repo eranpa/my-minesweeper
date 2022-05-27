@@ -8,16 +8,29 @@
     <link rel="stylesheet" href="css/style.css">
     <title>minesweeper</title>
 </head>
+
 <body onload="initGame()" oncontextmenu="return false;">
+
+
+    <div class="emoji" onclick="resetGame()">🙂</div>
+
+    <div class="life-bar"></div>
+    <div class="flag-counter">
+        <h1>Flagged: <span>0</span><br></h1>
+    </div>
+    <div class="timer">
+        <h1>Elapsed Time: <span>0</span><br></h1>
+    </div>
     
-    <div class = "buttons">
-        <button onclick="setLevel('Beginner')">Beginner</button>
-        <button onclick="setLevel('Medium')">Medium</button>
-        <button onclick="setLevel('Expert')">Expert</button>
+    <div class="buttons">
+        <button onclick="setLevel(this,'Beginner')">Beginner</button>
+        <button onclick="setLevel(this,'Medium')">Medium</button>
+        <button onclick="setLevel(this,'Expert')">Expert</button>
     </div>
     <div class="board-container"></div>
-
+    <button onclick="safeClick()">safe click</button>
     <script src="js/utils.js"></script>
     <script src="js/main.js"></script>
 </body>
+
 </html>
