@@ -11,15 +11,15 @@
 
 <body onload="initGame()" oncontextmenu="return false;">
 
+    <!-- class="counter" -->
 
     <div class="emoji" onclick="resetGame()">🙂</div>
-
-    <div class="life-bar"></div>
-    <div class="flag-counter">
-        <h1>Flagged: <span>0</span><br></h1>
-    </div>
-    <div class="timer">
-        <h1>Elapsed Time: <span>0</span><br></h1>
+    <div class="top-counters">
+        <span class="counter life-bar"></span>
+        <span class="counter flag-counter">
+            Flagged: <span>0</span><br>
+        </span>
+        <span class="counter hint-counter" onclick="hintClicked()"></span>
     </div>
     
     <div class="buttons">
@@ -28,7 +28,11 @@
         <button onclick="setLevel(this,'Expert')">Expert</button>
     </div>
     <div class="board-container"></div>
-    <button onclick="safeClick()">safe click</button>
+    <span class="counter safe" onclick="safeClick()">safe click</span>
+    <span class="counter safe-click-counter"></span>
+    <span class="counter timer">
+        Time: <span>0</span><br>
+    </span>
     <script src="js/utils.js"></script>
     <script src="js/main.js"></script>
 </body>

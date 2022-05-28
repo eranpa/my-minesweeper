@@ -14,6 +14,8 @@ var NOGO = '😮'
 var LOSE = '🤯'
 var WIN = '😎'
 var LIFE = '♡'
+var HINT = '💡'
+var SAFETY = '⛑'
 
 var gTimerId
 
@@ -22,43 +24,28 @@ var gElEmoji
 var gElLifeBar
 var gElTimer
 var gElSelectedLevel
+var gIsHint
+var gElHintCounter
+var gElsafeClickCounter
+var gElElapsedTIme
+var gElFlagCounter
+var gElContainer
 
-gLevel = { size: 4, mines: 2 }
+// gLevel = { size: 4, mines: 2 }
 
 //create initGame - initialize a the board and set all the variables and objects to their initial value 
-function initGame() {
-    gIsTimerRunning = false
+function initGame(size = 4, mines = 2) {
+    gLevel = {
+        size: size,
+        mines: mines
+    }
     gBoard = buildBoard()
-    console.table(gBoard) //TODO - REMOVE AFTER DEBUG IS DONE
-    gElEmoji = document.querySelector('.emoji')
-    gElEmoji.innerText = RESET
-    var elElapsedTIme = document.querySelector('.timer span')
-    elElapsedTIme.innerHTML = `0`
-
+    createCssElements()
     renderBoard(gBoard)
-    gGame = {
-        isOn: true,
-        shownCount: 0,
-        markedCount: 0,
-        secsPassed: 0,
-        lives: 3,
-        hints: 3,
-        safeClick: 3
-    }
-    gElTimer = document.querySelector('.timer')
+    setGGameDefault()
+    setCountersDefault()
 
-    var elFlagCounter = document.querySelector('.flag-counter span')
-    elFlagCounter.innerHTML = gGame.markedCount
-    gElLifeBar = document.querySelector('.life-bar')
-    gElLifeBar.innerText = LIFE + LIFE + LIFE
-
-
-    for (var i = 0; i < gBoard.length; i++) { //TODO - REMOVE AFTER DEBUG IS DONE
-        for (var j = 0; j < gBoard.length[0]; j++) {
-            console.log('cell: ', gBoard[i][j])
-        }
-    }
-
+    //console.table(gBoard) //TODO - REMOVE AFTER DEBUG IS DONE
 }
 
 // buildBoard - builds the board model - and set all cell values to default 
@@ -114,8 +101,8 @@ function renderBoard(board) {
         strHTML += '</tr>'
     }
     strHTML += '</tbody></table>';
-    var elContainer = document.querySelector('.board-container');
-    elContainer.innerHTML = strHTML;
+
+    gElContainer.innerHTML = strHTML
 }
 
 //cellClicked(elCell, i, j) - Called when a cell (td) is clicked and handles each click according to the 
@@ -123,8 +110,12 @@ function renderBoard(board) {
 
 function cellClicked(elCell, i, j) {
     if (!gGame.isOn) return
+    if (gIsHint) {
+        showHint(elCell, i, j)
+        return
+    }
     if (gBoard[i][j].isMine && gBoard[i][j].isShown) return
-    if (!gIsTimerRunning) firstMove(elCell, i, j)
+    if (gGame.firstMove) firstMove(elCell, i, j, true)
 
     if (gBoard[i][j].isMarked) return
 
@@ -143,7 +134,7 @@ function cellClicked(elCell, i, j) {
             gBoard[i][j].isShown = true
             gGame.markedCount++
         }
-    } else if (gBoard[i][j].minesAroundCount === 0) {
+    } else if (gBoard[i][j].minesAroundCount === 0 && !gGame.firstMove) {
         expandShown(gBoard, elCell, i, j)
     } else {
         var displayInCell = `${gBoard[i][j].minesAroundCount}`
@@ -161,7 +152,7 @@ function cellMarked(elCell, i, j) {
     if (!gGame.isOn) return
     var cell = gBoard[i][j]
 
-    if (!gIsTimerRunning) firstMove(elCell, i, j)
+    if (gGame.firstMove) firstMove(elCell, i, j, false)
     if (gGame.markedCount === gLevel.mines && !cell.isMarked) return
     if (cell.isShown) return
 
@@ -169,9 +160,9 @@ function cellMarked(elCell, i, j) {
     var cellDisp = cell.isMarked ? FLAG : ' '
     elCell.innerHTML = cellDisp
     gGame.markedCount += (cell.isMarked) ? 1 : -1
-    var elFlagCounter = document.querySelector('.flag-counter span')
+    gElFlagCounter.innerHTML = gGame.markedCount
 
-    elFlagCounter.innerHTML = gGame.markedCount
+    checkGameOver()
 }
 
 //checkGameOver() Game ends when all mines are marked and all other cells are shown
@@ -189,8 +180,11 @@ function checkGameOver() {
 //expandShown(board, elCell, i, j) when a cell that does not have any mined neighbors is revealed - reveal all it's
 // neighbors- recourse
 function expandShown(board, elCell, i, j) {
+    
+    if (!gBoard[i][j].isShown) {
     gBoard[i][j].isShown = true
     gGame.shownCount++
+    }
 
     for (var k = i - 1; k <= i + 1; k++) {
         if (k < 0 || k >= board.length) continue;
@@ -200,11 +194,13 @@ function expandShown(board, elCell, i, j) {
             var cell = gBoard[k][l]
             if (cell.isMarked) return
             var elNeig = document.querySelector('#cell-' + k + '-' + l)
+
             if (cell.minesAroundCount === 0 && !cell.isShown) expandShown(gBoard, elNeig, k, l)
+            
             if (!cell.isShown) {
                 gGame.shownCount++
+                cell.isShown = true
             }
-            cell.isShown = true
             elNeig.classList.add('revealed')
 
             elNeig.innerHTML = cell.minesAroundCount
@@ -220,6 +216,9 @@ function gameLost() {
     clearInterval(gTimerId)
 
     gElEmoji.innerText = LOSE
+    gElLifeBar.innerText = LIFE
+    gElLifeBar.style.textDecoration = 'line-through'
+
     for (var i = 0; i < gBoard.length; i++) {
         for (var j = 0; j < gBoard.length; j++) {
 
@@ -228,7 +227,7 @@ function gameLost() {
 
             if (gBoard[i][j].isMine && gBoard[i][j].isMarked === true) {
                 elCell.classList.add('revealed')
-                elCell.innerHTML = CROSS + MINE
+                elCell.innerHTML = CROSS
             } else if (gBoard[i][j].isMine) {
                 elCell.innerHTML = MINE
                 elCell.classList.add('revealed')
@@ -241,67 +240,41 @@ function gameLost() {
 
 //called on onclick assigned to each option on the display 
 function setLevel(elBtn, userLevelChoice) {
+    var level
     switch (userLevelChoice) {
         case 'Beginner':
-            gLevel = {
+            level = {
                 size: 4,
                 mines: 2
             }
             break
         case 'Medium':
-            gLevel = {
+            level = {
                 size: 8,
                 mines: 13
             }
             break
         case 'Expert':
-            gLevel = {
+            level = {
                 size: 12,
                 mines: 30
             }
             break
     }
-    elBtn.classList.add('selected-level')
+    elBtn.classList.add('selected')
     clearInterval(gTimerId)
-    initGame()
+    initGame(level.size, level.mines)
 }
 
-// //////locateMines///////
-// //locate mines randomly
 
-// function locateMines(board) {
-//     for (var i = 0; i < gLevel.mines; i++) {
-//         var newMineLocation = getEmptyCell(board)
-//         board[newMineLocation.i][newMineLocation.j].isMine = true
-//     }
-// }
 function firstMove(elCell, i, j) {
 
     runTimer()
-    gBoard[i][j].isShown = true
-    // gGame.shownCount++
     locateMinesAfterClick(gBoard, i, j)
     setMinesNegsCount(gBoard)
     //expand after first move
-    for (var k = i - 1; k <= i + 1; k++) {
-        if (k < 0 || k >= gBoard.length) continue;
-        for (var l = j - 1; l <= j + 1; l++) {
-            if (k === i && l === j) continue;
-            if (l < 0 || l >= gBoard[k].length) continue;
-            var cell = gBoard[k][l]
-            if (cell.isMarked) return
-            var elNeig = document.querySelector('#cell-' + k + '-' + l)
-            if (cell.minesAroundCount === 0 && !cell.isShown) expandShown(gBoard, elNeig, k, l)
-            if (!cell.isShown) {
-                gGame.shownCount++
-            }
-            if (!cell.isMine) {
-                cell.isShown = true
-                elNeig.classList.add('revealed')
-                elNeig.innerHTML = cell.minesAroundCount
-            }
-        }
-    }
+    expandShown(gBoard, elCell, i,j)
+    gGame.firstMove = false
 }
 
 //run timer
@@ -354,35 +327,67 @@ function getEmptyCellExcludeNegs(board, cellI, cellJ) {
 }
 
 
-//show hint -  //TODO: add functionality to cellClicked, and a global boolean variable that toggles on
-//clicking 
-function showHint(elCell, cellI, cellJ) {
 
-    for (i = cellI - 1; i <= cellI + 1; i++) {
-        for (j = cellJ - 1; j <= cellJ + 1; j++) {
+function showHint(elCell, cellI, cellJ) {
+    gElHintCounter.classList.remove('selected')
+    gIsHint = false
+
+    for (var i = cellI - 1; i <= cellI + 1; i++) {
+        for (var j = cellJ - 1; j <= cellJ + 1; j++) {
+            if (i < 0 || i > gBoard.length - 1) continue
+            if (j < 0 || j > gBoard.length - 1) continue
             var cell = gBoard[i][j]
-            var currHtml = elCell.innerHTML
+            if (cell.isShown) continue
             var elCurrCell = document.querySelector('#cell-' + i + '-' + j)
+
             elCurrCell.classList.add('hint')
+
             if (cell.isMine) {
-                elCell.innerHTML = '💣'
-            } else if (cell.minesAroundCount > 0){
+                elCurrCell.innerHTML = '💣'
+            } else {
                 var displayInCell = `${gBoard[i][j].minesAroundCount}`
-                elCell.innerHTML = displayInCell
+                elCurrCell.innerHTML = displayInCell
             }
+
+
         }
-        setTimeout(function(){ 
-            elCurrCell.classList.remove('hint')
-            elCell.innerHTML = currHtml
-        },1)
+
+        setTimeout(function () {
+            for (var i = cellI - 1; i <= cellI + 1; i++) {
+                for (var j = cellJ - 1; j <= cellJ + 1; j++) {
+                    if (i < 0 || i > gBoard.length - 1) continue
+                    if (j < 0 || j > gBoard.length - 1) continue
+                    var cell = gBoard[i][j]
+                    if (cell.isShown) continue
+                    var elCurrCell = document.querySelector('#cell-' + i + '-' + j)
+                    elCurrCell.classList.remove('hint')
+                    elCurrCell.innerHTML = cell.isMarked ? FLAG : ' '
+
+                }
+            }
+
+        }, 1000)
+
+
     }
 }
 
 // safe click - //TODO: set a global variable or a property inside of gGame to function as the model 
 //for how many safe clicks are left. create a dive to replace the temporary button
 
-function safeClick(){
-   
+function safeClick() {
+
+    if (!gGame.safeClick) return
+    gGame.safeClick--
+    gElsafeClickCounter.innerText = ' '
+    for (var i = 0; i < gGame.safeClick; i++) {
+        gElsafeClickCounter.innerText += SAFETY
+    }
+    if (gGame.safeClick === 0) {
+        gElsafeClickCounter.innerText = SAFETY
+        gElsafeClickCounter.style.textDecoration = 'line-through'
+    }
+
     var safeCell = getEmptyCell(gBoard)
     var displayInCell = `${gBoard[safeCell.i][safeCell.j].minesAroundCount}`
     var elCell = document.querySelector('#cell-' + safeCell.i + '-' + safeCell.j)
@@ -391,5 +396,64 @@ function safeClick(){
     gGame.shownCount++
     elCell.classList.add('revealed')
     checkGameOver()
+
+}
+
+function hintClicked() {
+    if (!gGame.hintCounter || !gGame.isOn) return
+    gGame.hintCounter--
+    gIsHint = true
+    if (!gGame.hintCounter) {
+        gElHintCounter.style.textDecoration = 'line-through'
+    } else {
+        gElHintCounter.innerText = ''
+        for (var i = 0; i < gGame.hintCounter; i++) {
+            gElHintCounter.innerText += HINT
+        }
+    }
+    gElHintCounter.classList.add('selected')
+
+}
+
+function createCssElements() {
+    gElElapsedTIme = document.querySelector('.timer span')
+    gElEmoji = document.querySelector('.emoji')
+    gElTimer = document.querySelector('.timer')
+    gElFlagCounter = document.querySelector('.flag-counter span')
+    gElLifeBar = document.querySelector('.life-bar')
+    gElLifeBar.style.textDecoration = 'none'
+    gElHintCounter = document.querySelector('.hint-counter')
+    gElsafeClickCounter = document.querySelector('.safe-click-counter')
+    gElContainer = document.querySelector('.board-container')
+}
+
+function setGGameDefault() {
+    gGame = {
+        isOn: true,
+        shownCount: 0,
+        markedCount: 0,
+        secsPassed: 0,
+        lives: 3,
+        hints: 3,
+        safeClick: 3,
+        hintCounter: 3,
+        firstMove: true
+
+    }
+
+}
+
+function setCountersDefault() {
+    gIsHint = false
+    gIsTimerRunning = false
+
+    gElElapsedTIme.innerHTML = `0`
+    gElEmoji.innerText = RESET
+    gElFlagCounter.innerHTML = gGame.markedCount
+    gElLifeBar.innerText = LIFE + LIFE + LIFE
+    gElHintCounter.innerText = HINT + HINT + HINT
+    gElsafeClickCounter.innerText = SAFETY + SAFETY + SAFETY
+    gElHintCounter.style.textDecoration = 'none'
+    gElsafeClickCounter.style.textDecoration = 'none'
 
 }
